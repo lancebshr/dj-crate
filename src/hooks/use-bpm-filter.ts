@@ -215,10 +215,71 @@ export function useBpmFilter(tracks: Track[], options?: UseBpmFilterOptions) {
       tagProgress: { completed: 0, tagged: 0, total: tracks.length },
     }));
 
-    // Build all batches upfront
+    // Step 1: Bulk-load cached genres from Convex (single fast request)
+    let uncachedTrackIds = new Set<string>();
+    try {
+      const cacheResponse = await fetch("/api/genres/cached", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tracks: tracks.map((t) => ({
+            trackId: t.id,
+            trackName: t.name,
+            artistName: t.artist,
+          })),
+        }),
+        signal,
+      });
+
+      if (cacheResponse.ok) {
+        const cacheData = await cacheResponse.json();
+        const cachedResults: Array<{ trackId: string; genres: string[] }> =
+          cacheData.results;
+        const uncachedIds: string[] = cacheData.uncachedTrackIds;
+
+        for (const result of cachedResults) {
+          if (result.genres.length > 0) {
+            newGenreData.set(result.trackId, result.genres);
+          }
+        }
+
+        uncachedTrackIds = new Set(uncachedIds);
+        completed = tracks.length - uncachedIds.length;
+
+        // Update state with cached data immediately
+        if (newGenreData.size > 0) {
+          setState((s) => ({
+            ...s,
+            genreData: new Map(newGenreData),
+            tagProgress: { completed, tagged: newGenreData.size, total: tracks.length },
+          }));
+        }
+      }
+    } catch {
+      if (signal.aborted) return;
+      // If cache lookup fails, all tracks need enrichment
+      for (const t of tracks) uncachedTrackIds.add(t.id);
+    }
+
+    // Step 2: Only enrich tracks that weren't in cache
+    const uncachedTracks = tracks.filter((t) => uncachedTrackIds.has(t.id));
+
+    if (uncachedTracks.length === 0) {
+      // Everything was cached — done!
+      if (!signal.aborted) {
+        setState((s) => ({
+          ...s,
+          isTagging: false,
+          tagProgress: { completed: tracks.length, tagged: newGenreData.size, total: tracks.length },
+        }));
+      }
+      return;
+    }
+
+    // Build batches from uncached tracks only
     const batches: Track[][] = [];
-    for (let i = 0; i < tracks.length; i += GENRE_BATCH_SIZE) {
-      batches.push(tracks.slice(i, i + GENRE_BATCH_SIZE));
+    for (let i = 0; i < uncachedTracks.length; i += GENRE_BATCH_SIZE) {
+      batches.push(uncachedTracks.slice(i, i + GENRE_BATCH_SIZE));
     }
 
     // Process batches with concurrency limit
