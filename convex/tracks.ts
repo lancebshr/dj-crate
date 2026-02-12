@@ -15,6 +15,7 @@ export const getBatch = query({
         camelotKey: string | undefined;
         genres: string[] | undefined;
         bpmSource: string | undefined;
+        genreSource: string | undefined;
       }
     > = {};
 
@@ -31,6 +32,7 @@ export const getBatch = query({
           camelotKey: cached.camelotKey,
           genres: cached.genres,
           bpmSource: cached.bpmSource,
+          genreSource: cached.genreSource,
         };
       }
     }

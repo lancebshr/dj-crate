@@ -57,7 +57,12 @@ export async function POST(request: Request) {
         for (let j = 0; j < batch.length; j++) {
           const hit = cached[keys[j]];
           if (hit?.genres && hit.genres.length > 0) {
+            // Cached with genres
             results.push({ trackId: batch[j].trackId, genres: hit.genres });
+          } else if (hit?.genreSource) {
+            // Was looked up before but returned no genres — don't retry
+            // Return empty so client knows it's resolved
+            results.push({ trackId: batch[j].trackId, genres: [] });
           } else {
             uncachedTrackIds.push(batch[j].trackId);
           }

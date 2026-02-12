@@ -6,6 +6,26 @@ const API_BASE = "https://api.getsongbpm.com";
 const CONCURRENCY = 5;
 const DELAY_BETWEEN_REQUESTS = 100;
 
+/**
+ * GetSongBPM returns genres in varying formats:
+ *   ["Rock", "Pop"]          — plain strings
+ *   [{genre: "Rock"}, ...]   — genre objects
+ * This helper normalizes both into a string array.
+ */
+function extractGenreStrings(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  for (const item of raw) {
+    if (typeof item === "string") {
+      out.push(item);
+    } else if (typeof item === "object" && item !== null) {
+      const g = (item as Record<string, unknown>).genre;
+      if (typeof g === "string") out.push(g);
+    }
+  }
+  return out;
+}
+
 export class GetSongBpmProvider implements BpmProvider {
   name = "getsongbpm";
 
@@ -60,9 +80,9 @@ export class GetSongBpmProvider implements BpmProvider {
 
       // Extract artist genres from the response (e.g. song.artist.genres)
       let genres: string[] | null = null;
-      const rawGenres: unknown = song.artist?.genres;
-      if (Array.isArray(rawGenres) && rawGenres.length > 0) {
-        const normalized = normalizeSimpleGenres(rawGenres as string[]);
+      const genreStrings = extractGenreStrings(song.artist?.genres);
+      if (genreStrings.length > 0) {
+        const normalized = normalizeSimpleGenres(genreStrings);
         if (normalized.length > 0) {
           genres = normalized;
         }
@@ -118,9 +138,9 @@ export async function lookupGenresViaSongBpm(
         if (res.ok) {
           const data = await res.json();
           const song = data?.search?.[0];
-          const rawGenres: unknown = song?.artist?.genres;
-          if (Array.isArray(rawGenres) && rawGenres.length > 0) {
-            const normalized = normalizeSimpleGenres(rawGenres as string[]);
+          const genreStrings = extractGenreStrings(song?.artist?.genres);
+          if (genreStrings.length > 0) {
+            const normalized = normalizeSimpleGenres(genreStrings);
             if (normalized.length > 0) {
               results.push({ trackId: track.trackId, genres: normalized });
             }

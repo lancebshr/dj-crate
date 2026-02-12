@@ -59,18 +59,18 @@ export const TrackCard = memo(function TrackCard({ track }: TrackCardProps) {
           target="_blank"
           rel="noopener noreferrer"
           title="Find on SoundCloud"
-          className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 transition"
+          className="p-1.5 rounded bg-[#ff5500] hover:bg-[#ff6a1a] transition"
         >
-          <img src="/soundcloud.png" alt="SoundCloud" className="h-4 w-auto brightness-0 invert opacity-70" />
+          <img src="/soundcloud.png" alt="SoundCloud" className="h-3.5 w-auto brightness-0 invert" />
         </a>
         <a
           href={beatportSearchUrl(track)}
           target="_blank"
           rel="noopener noreferrer"
           title="Buy on Beatport"
-          className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 transition"
+          className="p-1.5 rounded bg-[#94d500] hover:bg-[#a5e619] transition"
         >
-          <img src="/beatport.png" alt="Beatport" className="h-4 w-auto" />
+          <img src="/beatport.png" alt="Beatport" className="h-3.5 w-auto brightness-0 invert" />
         </a>
       </div>
 

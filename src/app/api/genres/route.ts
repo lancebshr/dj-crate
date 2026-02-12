@@ -56,7 +56,11 @@ export async function POST(request: Request) {
         for (let i = 0; i < tracks.length; i++) {
           const hit = cached[keys[i]];
           if (hit?.genres && hit.genres.length > 0) {
+            // Cached with genres — use them
             results.push({ trackId: tracks[i].trackId, genres: hit.genres });
+          } else if (hit?.genreSource) {
+            // Was looked up before but returned no genres — don't retry
+            results.push({ trackId: tracks[i].trackId, genres: [] });
           } else {
             stillNeeded.push(tracks[i]);
           }
@@ -70,7 +74,7 @@ export async function POST(request: Request) {
     // Look up genres for uncached tracks
     if (uncachedTracks.length > 0) {
       // Layer 1: GetSongBPM (fast, concurrent)
-      let layer1Hits = new Set<string>();
+      const layer1Hits = new Set<string>();
       if (GETSONGBPM_KEY) {
         try {
           const gsbResults = await lookupGenresViaSongBpm(
@@ -97,25 +101,28 @@ export async function POST(request: Request) {
         }
       }
 
-      // Write all new genres back to Convex cache
+      // Build a set of trackIds that got genres from APIs
+      const lookedUpIds = new Set(uncachedTracks.map((t) => t.trackId));
+      const resultMap = new Map<string, string[]>();
+      for (const r of results) {
+        if (lookedUpIds.has(r.trackId)) {
+          resultMap.set(r.trackId, r.genres);
+        }
+      }
+
+      // Write ALL looked-up tracks to Convex — including empty genres
+      // so we don't re-lookup tracks that genuinely have no genre data
       if (convex) {
-        const allNewGenres = results.filter(
-          (r) =>
-            r.genres.length > 0 &&
-            uncachedTracks.some((t) => t.trackId === r.trackId)
-        );
-        const toCache = allNewGenres.map((g) => {
-          const track = uncachedTracks.find(
-            (t) => t.trackId === g.trackId
-          )!;
-          const source = layer1Hits.has(g.trackId)
+        const toCache = uncachedTracks.map((track) => {
+          const genres = resultMap.get(track.trackId) ?? [];
+          const source = layer1Hits.has(track.trackId)
             ? "getsongbpm"
             : "musicbrainz";
           return {
             lookupKey: lookupKey(track.artistName, track.trackName),
             trackName: normalizeTitle(track.trackName),
             artistName: normalizeArtist(track.artistName),
-            genres: g.genres,
+            genres,
             genreSource: source,
           };
         });

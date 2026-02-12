@@ -17,6 +17,7 @@ export const api = {
           camelotKey: string | undefined;
           genres: string[] | undefined;
           bpmSource: string | undefined;
+          genreSource: string | undefined;
         }
       >
     >("tracks:getBatch"),
