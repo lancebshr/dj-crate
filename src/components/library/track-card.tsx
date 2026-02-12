@@ -59,18 +59,18 @@ export const TrackCard = memo(function TrackCard({ track }: TrackCardProps) {
           target="_blank"
           rel="noopener noreferrer"
           title="Find on SoundCloud"
-          className="p-1.5 rounded bg-[#ff5500] hover:bg-[#ff6a1a] transition"
+          className="p-1.5 rounded-md bg-gradient-to-b from-[#ff7733] to-[#e04500] border border-[#ff8844]/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_1px_3px_rgba(0,0,0,0.3)] hover:from-[#ff8844] hover:to-[#ff5500] active:shadow-[inset_0_1px_3px_rgba(0,0,0,0.3)] transition-all"
         >
-          <img src="/soundcloud.png" alt="SoundCloud" className="h-3.5 w-auto brightness-0 invert" />
+          <img src="/soundcloud.png" alt="SoundCloud" className="h-3.5 w-auto brightness-0 invert drop-shadow-[0_1px_1px_rgba(0,0,0,0.2)]" />
         </a>
         <a
           href={beatportSearchUrl(track)}
           target="_blank"
           rel="noopener noreferrer"
           title="Buy on Beatport"
-          className="p-1.5 rounded bg-[#94d500] hover:bg-[#a5e619] transition"
+          className="p-1.5 rounded-md bg-gradient-to-b from-[#a8e619] to-[#7fb800] border border-[#b5f020]/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_1px_3px_rgba(0,0,0,0.3)] hover:from-[#b5f020] hover:to-[#94d500] active:shadow-[inset_0_1px_3px_rgba(0,0,0,0.3)] transition-all"
         >
-          <img src="/beatport.png" alt="Beatport" className="h-3.5 w-auto brightness-0 invert" />
+          <img src="/beatport.png" alt="Beatport" className="h-3.5 w-auto brightness-0 invert drop-shadow-[0_1px_1px_rgba(0,0,0,0.2)]" />
         </a>
       </div>
 
