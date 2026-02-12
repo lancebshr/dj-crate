@@ -24,10 +24,19 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
+      <head>
+        <link rel="author" href="https://getsongbpm.com" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-black text-white`}
       >
         {children}
+        <noscript>
+          <p>
+            BPM and genre data by{" "}
+            <a href="https://getsongbpm.com">GetSongBPM</a>
+          </p>
+        </noscript>
       </body>
     </html>
   );

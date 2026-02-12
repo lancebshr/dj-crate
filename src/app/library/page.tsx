@@ -250,7 +250,7 @@ export default function LibraryPage() {
         <a
           href="https://getsongbpm.com"
           target="_blank"
-          rel="noopener noreferrer"
+          rel="noopener"
           className="underline hover:text-zinc-400"
         >
           GetSongBPM
