@@ -254,6 +254,9 @@ export function useBpmFilter(tracks: Track[], options?: UseBpmFilterOptions) {
             tagProgress: { completed, tagged: newGenreData.size, total: tracks.length },
           }));
         }
+      } else {
+        // Non-OK response — treat all tracks as uncached
+        for (const t of tracks) uncachedTrackIds.add(t.id);
       }
     } catch {
       if (signal.aborted) return;
