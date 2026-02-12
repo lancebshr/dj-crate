@@ -107,6 +107,19 @@ export default function Home() {
           </p>
         </div>
       </div>
+
+      {/* Attribution Footer */}
+      <footer className="absolute bottom-0 inset-x-0 px-6 py-3 text-xs text-zinc-600 text-center">
+        BPM & genre data by{" "}
+        <a
+          href="https://getsongbpm.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-zinc-400"
+        >
+          GetSongBPM
+        </a>
+      </footer>
     </div>
   );
 }
