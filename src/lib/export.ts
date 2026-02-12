@@ -4,7 +4,7 @@ import type { TrackWithBpm } from "@/types";
  * Download filtered tracks as a CSV file.
  * Includes Spotify URIs for accurate matching in Soundiiz/TuneMyMusic.
  */
-export function downloadCsv(tracks: TrackWithBpm[], filename = "dj-crate-export.csv") {
+export function downloadCsv(tracks: TrackWithBpm[], filename = "djprep-export.csv") {
   const header = "Track Name,Artist,Album,BPM,Key,Camelot Key,Genres,Vibe,Spotify URI";
   const rows = tracks.map((t) => {
     const fields = [

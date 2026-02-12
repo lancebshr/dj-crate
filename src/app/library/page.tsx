@@ -139,7 +139,7 @@ export default function LibraryPage() {
     <div className="min-h-screen flex flex-col">
       {/* Header */}
       <header className="flex items-center justify-between px-6 py-4 border-b border-zinc-800 flex-shrink-0">
-        <h1 className="text-xl font-bold">dj-crate</h1>
+        <h1 className="text-xl font-bold">djprep</h1>
         <div className="flex items-center gap-4">
           {importMode === "csv" && (
             <span className="text-xs text-zinc-500 bg-zinc-800 px-2 py-1 rounded">

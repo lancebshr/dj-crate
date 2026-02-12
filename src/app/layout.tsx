@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "dj-crate",
+  title: "djprep",
   description: "Filter your Spotify library by BPM",
 };
 

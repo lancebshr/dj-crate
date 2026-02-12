@@ -2,7 +2,7 @@ import { normalizeArtist } from "./bpm/normalize";
 import { normalizeGenreTags, type RawTag } from "./genre-taxonomy";
 
 const API_BASE = "https://musicbrainz.org/ws/2";
-const USER_AGENT = "dj-crate/0.1.0 (https://github.com/lancebshr/dj-crate)";
+const USER_AGENT = "djprep/0.1.0 (https://github.com/lancebshr/dj-crate)";
 const DELAY_MS = 1100; // MusicBrainz enforces 1 req/sec strictly
 
 export interface GenreResult {

@@ -65,7 +65,7 @@ export default function Home() {
       <div className="w-full max-w-lg flex flex-col items-center gap-8">
         {/* Title */}
         <div className="text-center">
-          <h1 className="text-6xl font-bold tracking-tight mb-3">dj-crate</h1>
+          <h1 className="text-6xl font-bold tracking-tight mb-3">djprep</h1>
           <p className="text-xl text-zinc-400">
             Filter your Spotify library by BPM
           </p>
