@@ -56,6 +56,8 @@ export default function LibraryPage() {
     clearGenres,
     isEnriching,
     enrichProgress,
+    isTagging,
+    tagProgress,
     stats,
   } = useBpmFilter(activeTracks, { initialBpmMap: csvBpmMap, initialKeyMap: csvKeyMap });
 
@@ -181,11 +183,6 @@ export default function LibraryPage() {
           <span className="text-sm text-zinc-400">
             {csvTracks.length.toLocaleString()} tracks imported
           </span>
-          {csvBpmMap && csvBpmMap.size > 0 && (
-            <span className="text-xs text-green-500">
-              {csvBpmMap.size.toLocaleString()} with BPM from CSV
-            </span>
-          )}
         </div>
       )}
 
@@ -199,6 +196,8 @@ export default function LibraryPage() {
           onToggleBpmNormalized={toggleBpmNormalized}
           isEnriching={isEnriching}
           enrichProgress={enrichProgress}
+          isTagging={isTagging}
+          tagProgress={tagProgress}
           stats={stats}
           availableGenres={availableGenres}
           selectedGenres={selectedGenres}

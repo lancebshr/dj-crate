@@ -13,6 +13,8 @@ interface FilterBarProps {
   onToggleBpmNormalized: () => void;
   isEnriching: boolean;
   enrichProgress: { completed: number; total: number };
+  isTagging: boolean;
+  tagProgress: { completed: number; tagged: number; total: number };
   stats: { total: number; withBpm: number; inRange: number };
   availableGenres: string[];
   selectedGenres: Set<string>;
@@ -28,6 +30,8 @@ export function FilterBar({
   onToggleBpmNormalized,
   isEnriching,
   enrichProgress,
+  isTagging,
+  tagProgress,
   stats,
   availableGenres,
   selectedGenres,
@@ -142,17 +146,18 @@ export function FilterBar({
             </span>
           </div>
         ) : (
-          <>
+          <span>
+            {stats.inRange.toLocaleString()} of{" "}
+            {stats.total.toLocaleString()} tracks in range
+          </span>
+        )}
+        {isTagging && (
+          <div className="flex items-center gap-2">
+            <div className="animate-spin h-3 w-3 border border-zinc-600 border-t-purple-500 rounded-full" />
             <span>
-              {stats.inRange.toLocaleString()} of{" "}
-              {stats.total.toLocaleString()} tracks in range
+              Tagging: {tagProgress.tagged.toLocaleString()} tagged ({tagProgress.completed.toLocaleString()} / {tagProgress.total.toLocaleString()})
             </span>
-            {stats.total > 0 && stats.withBpm < stats.total && (
-              <span className="text-zinc-600">
-                ({stats.total - stats.withBpm} missing BPM)
-              </span>
-            )}
-          </>
+          </div>
         )}
       </div>
     </div>

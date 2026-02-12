@@ -34,7 +34,10 @@ export function TuneMyMusicModal({ tracks, onClose }: TuneMyMusicModalProps) {
   const copyCurrentPart = useCallback(() => {
     const partTracks = getPartTracks(currentPart);
     const text = copyAsText(partTracks);
-    navigator.clipboard.writeText(text).then(() => setCopied(true));
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   }, [currentPart, getPartTracks]);
 
   // Auto-copy on mount and when part changes
@@ -97,11 +100,17 @@ export function TuneMyMusicModal({ tracks, onClose }: TuneMyMusicModalProps) {
                 <>{tracks.length} tracks ready</>
               )}
             </span>
-            <span
-              className={`text-xs ${copied ? "text-green-400" : "text-zinc-500"}`}
-            >
-              {copied ? "Copied to clipboard" : "Copying..."}
-            </span>
+            <div className="flex items-center gap-2">
+              {copied && (
+                <span className="text-xs text-green-400">Copied!</span>
+              )}
+              <button
+                onClick={copyCurrentPart}
+                className="text-xs px-2.5 py-1 rounded-md bg-zinc-700 text-zinc-300 hover:bg-zinc-600 transition"
+              >
+                Copy to Clipboard
+              </button>
+            </div>
           </div>
         </div>
 
@@ -166,7 +175,7 @@ export function TuneMyMusicModal({ tracks, onClose }: TuneMyMusicModalProps) {
               <span className="text-green-400 font-mono font-bold">2.</span>
               <span>
                 Select{" "}
-                <strong className="text-white">&quot;Any Text&quot;</strong> as
+                <strong className="text-white">&quot;Free Text&quot;</strong> as
                 the source
               </span>
             </li>

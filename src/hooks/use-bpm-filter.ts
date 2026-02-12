@@ -30,6 +30,8 @@ interface BpmFilterState {
   selectedGenres: Set<string>;
   isEnriching: boolean;
   enrichProgress: { completed: number; total: number };
+  isTagging: boolean;
+  tagProgress: { completed: number; tagged: number; total: number };
 }
 
 interface UseBpmFilterOptions {
@@ -48,6 +50,8 @@ export function useBpmFilter(tracks: Track[], options?: UseBpmFilterOptions) {
     selectedGenres: new Set(),
     isEnriching: false,
     enrichProgress: { completed: 0, total: 0 },
+    isTagging: false,
+    tagProgress: { completed: 0, tagged: 0, total: 0 },
   });
 
   const abortRef = useRef<AbortController | null>(null);
@@ -203,6 +207,13 @@ export function useBpmFilter(tracks: Track[], options?: UseBpmFilterOptions) {
 
   async function enrichGenres(tracks: Track[], signal: AbortSignal) {
     const newGenreData = new Map<string, string[]>();
+    let completed = 0;
+
+    setState((s) => ({
+      ...s,
+      isTagging: true,
+      tagProgress: { completed: 0, tagged: 0, total: tracks.length },
+    }));
 
     // Build all batches upfront
     const batches: Track[][] = [];
@@ -233,7 +244,15 @@ export function useBpmFilter(tracks: Track[], options?: UseBpmFilterOptions) {
             signal,
           });
 
-          if (!response.ok) continue;
+          completed += batch.length;
+
+          if (!response.ok) {
+            setState((s) => ({
+              ...s,
+              tagProgress: { completed, tagged: newGenreData.size, total: tracks.length },
+            }));
+            continue;
+          }
 
           const data = await response.json();
           const results: Array<{ trackId: string; genres: string[] }> =
@@ -248,9 +267,11 @@ export function useBpmFilter(tracks: Track[], options?: UseBpmFilterOptions) {
           setState((s) => ({
             ...s,
             genreData: new Map(newGenreData),
+            tagProgress: { completed, tagged: newGenreData.size, total: tracks.length },
           }));
         } catch {
           if (signal.aborted) return;
+          completed += batch.length;
         }
       }
     }
@@ -261,6 +282,10 @@ export function useBpmFilter(tracks: Track[], options?: UseBpmFilterOptions) {
         () => worker()
       )
     );
+
+    if (!signal.aborted) {
+      setState((s) => ({ ...s, isTagging: false }));
+    }
   }
 
   const setBpmRange = useCallback((range: [number, number]) => {
@@ -383,6 +408,8 @@ export function useBpmFilter(tracks: Track[], options?: UseBpmFilterOptions) {
     clearGenres,
     isEnriching: state.isEnriching,
     enrichProgress: state.enrichProgress,
+    isTagging: state.isTagging,
+    tagProgress: state.tagProgress,
     stats,
   };
 }
