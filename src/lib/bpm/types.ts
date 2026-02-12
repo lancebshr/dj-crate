@@ -10,6 +10,7 @@ export interface BpmResult {
   musicalKey: string | null;
   camelotKey: string | null;
   source: string;
+  genres?: string[] | null;
 }
 
 export interface BpmProvider {

@@ -14,6 +14,8 @@ export interface TrackWithBpm extends Track {
   camelotKey: string | null;
   bpmSource: string | null;
   bpmLoading: boolean;
+  genres: string[] | null;
+  vibe: string | null;
 }
 
 export interface Playlist {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState, useMemo } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { TrackCard } from "./track-card";
 import type { TrackWithBpm } from "@/types";
@@ -11,17 +11,40 @@ interface TrackListProps {
   loadProgress: { loaded: number; total: number } | null;
 }
 
+type BpmSort = "none" | "asc" | "desc";
+
 const ROW_HEIGHT = 64;
 
 export function TrackList({ tracks, isLoading, loadProgress }: TrackListProps) {
   const parentRef = useRef<HTMLDivElement>(null);
+  const [bpmSort, setBpmSort] = useState<BpmSort>("none");
+
+  const sortedTracks = useMemo(() => {
+    if (bpmSort === "none") return tracks;
+    return [...tracks].sort((a, b) => {
+      const aBpm = a.bpm ?? 0;
+      const bBpm = b.bpm ?? 0;
+      return bpmSort === "asc" ? aBpm - bBpm : bBpm - aBpm;
+    });
+  }, [tracks, bpmSort]);
 
   const virtualizer = useVirtualizer({
-    count: tracks.length,
+    count: sortedTracks.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => ROW_HEIGHT,
-    overscan: 20,
+    overscan: 50,
   });
+
+  function cycleBpmSort() {
+    setBpmSort((current) => {
+      if (current === "none") return "asc";
+      if (current === "asc") return "desc";
+      return "none";
+    });
+  }
+
+  const sortIndicator =
+    bpmSort === "asc" ? " \u2191" : bpmSort === "desc" ? " \u2193" : "";
 
   if (isLoading) {
     return (
@@ -51,7 +74,12 @@ export function TrackList({ tracks, isLoading, loadProgress }: TrackListProps) {
       <div className="flex items-center px-4 py-2 text-xs text-zinc-500 border-b border-zinc-800 flex-shrink-0">
         <span className="w-12 flex-shrink-0" />
         <span className="flex-1 ml-4">TRACK</span>
-        <span className="flex-shrink-0 w-24 text-right">BPM / KEY</span>
+        <button
+          onClick={cycleBpmSort}
+          className={`flex-shrink-0 w-24 text-right cursor-pointer hover:text-zinc-300 transition select-none ${bpmSort !== "none" ? "text-green-400" : ""}`}
+        >
+          BPM{sortIndicator} / KEY
+        </button>
       </div>
 
       {/* Virtualized list */}
@@ -75,7 +103,7 @@ export function TrackList({ tracks, isLoading, loadProgress }: TrackListProps) {
                 transform: `translateY(${virtualRow.start}px)`,
               }}
             >
-              <TrackCard track={tracks[virtualRow.index]} />
+              <TrackCard track={sortedTracks[virtualRow.index]} />
             </div>
           ))}
         </div>

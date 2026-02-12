@@ -1,9 +1,11 @@
 import type { Track } from "@/types";
+import { toCamelotKey } from "../camelot";
 
 interface CsvParseResult {
   tracks: Track[];
   hasBpmData: boolean;
   bpmMap: Map<string, number>; // trackId -> bpm from CSV
+  keyMap: Map<string, string>; // trackId -> camelot key from CSV
   errors: string[];
 }
 
@@ -22,13 +24,18 @@ const DURATION_COLS = ["duration (ms)", "duration_ms", "duration"];
 const URI_COLS = ["spotify uri", "uri", "track uri"];
 const ID_COLS = ["spotify id", "track id", "id"];
 const IMAGE_COLS = ["album image url", "image", "album art", "artwork"];
+const KEY_COLS = ["key", "musical key", "musical_key", "camelot key", "camelot_key", "camelot", "open key", "open_key"];
+const MODE_COLS = ["mode"];
+
+// Exportify uses integer key (0-11) — map to note names
+const PITCH_CLASS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 
 export function parseCsv(csvText: string): CsvParseResult {
   const errors: string[] = [];
   const lines = csvText.split(/\r?\n/).filter((line) => line.trim());
 
   if (lines.length < 2) {
-    return { tracks: [], hasBpmData: false, bpmMap: new Map(), errors: ["CSV file is empty or has no data rows."] };
+    return { tracks: [], hasBpmData: false, bpmMap: new Map(), keyMap: new Map(), errors: ["CSV file is empty or has no data rows."] };
   }
 
   const headerLine = lines[0];
@@ -43,23 +50,26 @@ export function parseCsv(csvText: string): CsvParseResult {
   const uriIdx = findColumnIndex(headers, URI_COLS);
   const idIdx = findColumnIndex(headers, ID_COLS);
   const imageIdx = findColumnIndex(headers, IMAGE_COLS);
+  const keyIdx = findColumnIndex(headers, KEY_COLS);
+  const modeIdx = findColumnIndex(headers, MODE_COLS);
 
   if (nameIdx === -1) {
     errors.push(
       `Could not find a track name column. Expected one of: ${TRACK_NAME_COLS.join(", ")}`
     );
-    return { tracks: [], hasBpmData: false, bpmMap: new Map(), errors };
+    return { tracks: [], hasBpmData: false, bpmMap: new Map(), keyMap: new Map(), errors };
   }
 
   if (artistIdx === -1) {
     errors.push(
       `Could not find an artist column. Expected one of: ${ARTIST_COLS.join(", ")}`
     );
-    return { tracks: [], hasBpmData: false, bpmMap: new Map(), errors };
+    return { tracks: [], hasBpmData: false, bpmMap: new Map(), keyMap: new Map(), errors };
   }
 
   const tracks: Track[] = [];
   const bpmMap = new Map<string, number>();
+  const keyMap = new Map<string, string>();
   let hasBpmData = false;
 
   for (let i = 1; i < lines.length; i++) {
@@ -98,13 +108,37 @@ export function parseCsv(csvText: string): CsvParseResult {
         bpmMap.set(id, bpmVal);
       }
     }
+
+    // Extract key if available
+    if (keyIdx !== -1) {
+      const rawKey = values[keyIdx]?.trim();
+      if (rawKey) {
+        const keyInt = parseInt(rawKey);
+        let camelot: string | null = null;
+
+        if (!isNaN(keyInt) && keyInt >= 0 && keyInt <= 11) {
+          // Exportify integer format: key=0-11, mode=0(minor)/1(major)
+          const note = PITCH_CLASS[keyInt];
+          const modeVal = modeIdx !== -1 ? parseInt(values[modeIdx]) : 1;
+          const suffix = modeVal === 0 ? " minor" : " major";
+          camelot = toCamelotKey(note + suffix);
+        } else {
+          // Text format: "Am", "C major", "8B", etc.
+          camelot = toCamelotKey(rawKey);
+        }
+
+        if (camelot) {
+          keyMap.set(id, camelot);
+        }
+      }
+    }
   }
 
   if (tracks.length === 0) {
     errors.push("No valid tracks found in the CSV.");
   }
 
-  return { tracks, hasBpmData, bpmMap, errors };
+  return { tracks, hasBpmData, bpmMap, keyMap, errors };
 }
 
 // Parse a CSV row, handling quoted fields with commas

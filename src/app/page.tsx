@@ -31,11 +31,18 @@ export default function Home() {
 
       // Store parsed data in sessionStorage for the library page
       sessionStorage.setItem("csv_tracks", JSON.stringify(result.tracks));
+      sessionStorage.setItem("csv_raw", csvText);
       if (result.hasBpmData) {
         // Store BPM map as array of [id, bpm] pairs
         sessionStorage.setItem(
           "csv_bpm_map",
           JSON.stringify(Array.from(result.bpmMap.entries()))
+        );
+      }
+      if (result.keyMap.size > 0) {
+        sessionStorage.setItem(
+          "csv_key_map",
+          JSON.stringify(Array.from(result.keyMap.entries()))
         );
       }
       sessionStorage.setItem("import_source", "csv");

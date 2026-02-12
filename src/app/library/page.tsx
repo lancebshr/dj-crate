@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useDeferredValue } from "react";
 import { useRouter } from "next/navigation";
 import { useSpotifyAuth } from "@/hooks/use-spotify-auth";
 import { useLibrary } from "@/hooks/use-library";
@@ -8,6 +8,8 @@ import { useBpmFilter } from "@/hooks/use-bpm-filter";
 import { SourcePicker } from "@/components/library/source-picker";
 import { TrackList } from "@/components/library/track-list";
 import { FilterBar } from "@/components/filter/filter-bar";
+import { ExportBar } from "@/components/export/export-bar";
+import { parseCsv } from "@/lib/csv/parser";
 import type { Track } from "@/types";
 
 type ImportMode = "csv" | "spotify" | null;
@@ -20,6 +22,9 @@ export default function LibraryPage() {
   const [importMode, setImportMode] = useState<ImportMode>(null);
   const [csvTracks, setCsvTracks] = useState<Track[]>([]);
   const [csvBpmMap, setCsvBpmMap] = useState<Map<string, number> | undefined>(
+    undefined
+  );
+  const [csvKeyMap, setCsvKeyMap] = useState<Map<string, string> | undefined>(
     undefined
   );
 
@@ -42,10 +47,20 @@ export default function LibraryPage() {
     filteredTracks,
     bpmRange,
     setBpmRange,
+    bpmNormalized,
+    toggleBpmNormalized,
+    bpmBounds,
+    availableGenres,
+    selectedGenres,
+    toggleGenre,
+    clearGenres,
     isEnriching,
     enrichProgress,
     stats,
-  } = useBpmFilter(activeTracks, { initialBpmMap: csvBpmMap });
+  } = useBpmFilter(activeTracks, { initialBpmMap: csvBpmMap, initialKeyMap: csvKeyMap });
+
+  // Defer track list updates so enrichment re-renders don't interrupt scrolling
+  const deferredTracks = useDeferredValue(filteredTracks);
 
   // On mount, check which import mode we're in
   useEffect(() => {
@@ -63,6 +78,23 @@ export default function LibraryPage() {
       if (bpmJson) {
         const entries: [string, number][] = JSON.parse(bpmJson);
         setCsvBpmMap(new Map(entries));
+      }
+
+      let keyJson = sessionStorage.getItem("csv_key_map");
+      // If key data is missing (old import), re-parse from raw CSV
+      if (!keyJson) {
+        const rawCsv = sessionStorage.getItem("csv_raw");
+        if (rawCsv) {
+          const reParsed = parseCsv(rawCsv);
+          if (reParsed.keyMap.size > 0) {
+            keyJson = JSON.stringify(Array.from(reParsed.keyMap.entries()));
+            sessionStorage.setItem("csv_key_map", keyJson);
+          }
+        }
+      }
+      if (keyJson) {
+        const entries: [string, string][] = JSON.parse(keyJson);
+        setCsvKeyMap(new Map(entries));
       }
     } else if (isAuthenticated) {
       setImportMode("spotify");
@@ -86,6 +118,8 @@ export default function LibraryPage() {
   function handleBack() {
     sessionStorage.removeItem("csv_tracks");
     sessionStorage.removeItem("csv_bpm_map");
+    sessionStorage.removeItem("csv_key_map");
+    sessionStorage.removeItem("csv_raw");
     sessionStorage.removeItem("import_source");
     router.replace("/");
   }
@@ -159,11 +193,23 @@ export default function LibraryPage() {
       {hasTracks && !isLoading && (
         <FilterBar
           bpmRange={bpmRange}
+          bpmBounds={bpmBounds}
           onBpmRangeChange={setBpmRange}
+          bpmNormalized={bpmNormalized}
+          onToggleBpmNormalized={toggleBpmNormalized}
           isEnriching={isEnriching}
           enrichProgress={enrichProgress}
           stats={stats}
+          availableGenres={availableGenres}
+          selectedGenres={selectedGenres}
+          onToggleGenre={toggleGenre}
+          onClearGenres={clearGenres}
         />
+      )}
+
+      {/* Export Bar — show when there are filtered results */}
+      {deferredTracks.length > 0 && !isLoading && (
+        <ExportBar tracks={deferredTracks} />
       )}
 
       {/* Error */}
@@ -174,16 +220,16 @@ export default function LibraryPage() {
       )}
 
       {/* Track List */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 min-h-0">
         {importMode === "csv" && hasTracks ? (
           <TrackList
-            tracks={filteredTracks}
+            tracks={deferredTracks}
             isLoading={false}
             loadProgress={null}
           />
         ) : importMode === "spotify" && selectedSource ? (
           <TrackList
-            tracks={filteredTracks}
+            tracks={deferredTracks}
             isLoading={isLoadingTracks}
             loadProgress={loadProgress}
           />
