@@ -1,12 +1,7 @@
 import { NextResponse } from "next/server";
-import { lookupGenresViaSongBpm } from "@/lib/bpm/getsongbpm";
-import { lookupGenresViaSpotify } from "@/lib/spotify/genres";
+import { lookupGenres } from "@/lib/musicbrainz";
 import { normalizeTitle, normalizeArtist } from "@/lib/bpm/normalize";
 import { getConvexClient, api } from "@/lib/convex-client";
-
-const GETSONGBPM_KEY = process.env.GETSONGBPM_API_KEY || "";
-const SPOTIFY_CLIENT_ID = process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID || "";
-const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET || "";
 
 /** Strip non-ASCII so Convex field names don't crash on characters like ö */
 function toAscii(s: string): string {
@@ -58,11 +53,7 @@ export async function POST(request: Request) {
         for (let i = 0; i < tracks.length; i++) {
           const hit = cached[keys[i]];
           if (hit?.genres && hit.genres.length > 0) {
-            // Cached with genres — use them
             results.push({ trackId: tracks[i].trackId, genres: hit.genres });
-          } else if (hit?.genreSource) {
-            // Was looked up before but returned no genres — don't retry
-            results.push({ trackId: tracks[i].trackId, genres: [] });
           } else {
             stillNeeded.push(tracks[i]);
           }
@@ -73,78 +64,27 @@ export async function POST(request: Request) {
       }
     }
 
-    // Look up genres for uncached tracks
+    // Look up genres via MusicBrainz for uncached tracks
     if (uncachedTracks.length > 0) {
-      // Layer 1: GetSongBPM (fast, concurrent — ~1-2s per batch)
-      const layer1Hits = new Set<string>();
-      if (GETSONGBPM_KEY) {
-        try {
-          const gsbResults = await lookupGenresViaSongBpm(
-            uncachedTracks,
-            GETSONGBPM_KEY
-          );
-          for (const gr of gsbResults) {
-            results.push(gr);
-            layer1Hits.add(gr.trackId);
-          }
-        } catch (err) {
-          console.error("GetSongBPM genre lookup failed:", err);
-        }
+      const mbResults = await lookupGenres(uncachedTracks);
+      for (const gr of mbResults) {
+        results.push(gr);
       }
 
-      // Cache Layer 1 results to Convex immediately
+      // Cache tracks that got genres to Convex
       if (convex) {
-        const layer1Cache = uncachedTracks
-          .filter((t) => layer1Hits.has(t.trackId))
-          .map((track) => ({
-            lookupKey: lookupKey(track.artistName, track.trackName),
-            trackName: normalizeTitle(track.trackName),
-            artistName: normalizeArtist(track.artistName),
-            genres: results.find((r) => r.trackId === track.trackId)?.genres ?? [],
-            genreSource: "getsongbpm",
-          }));
-
-        if (layer1Cache.length > 0) {
-          convex
-            .mutation(api.tracks.upsertBatch, { tracks: layer1Cache })
-            .catch((err: unknown) =>
-              console.error("Convex genre cache write failed:", err)
-            );
-        }
-      }
-
-      // Layer 2: Spotify artist genres for Layer 1 misses (fast, concurrent)
-      const stillNeeded = uncachedTracks.filter(
-        (t) => !layer1Hits.has(t.trackId)
-      );
-      if (stillNeeded.length > 0 && SPOTIFY_CLIENT_ID && SPOTIFY_CLIENT_SECRET) {
-        try {
-          const spotifyResults = await lookupGenresViaSpotify(
-            stillNeeded,
-            SPOTIFY_CLIENT_ID,
-            SPOTIFY_CLIENT_SECRET
-          );
-          for (const gr of spotifyResults) {
-            results.push(gr);
-            layer1Hits.add(gr.trackId); // mark as found for cache write
-          }
-        } catch (err) {
-          console.error("Spotify genre lookup failed:", err);
-        }
-      }
-
-      // Cache ALL looked-up tracks (with or without genres) to Convex
-      if (convex) {
-        const toCache = uncachedTracks.map((track) => {
-          const found = results.find((r) => r.trackId === track.trackId);
-          return {
-            lookupKey: lookupKey(track.artistName, track.trackName),
-            trackName: normalizeTitle(track.trackName),
-            artistName: normalizeArtist(track.artistName),
-            genres: found?.genres ?? [],
-            genreSource: layer1Hits.has(track.trackId) ? "getsongbpm" : "spotify",
-          };
-        });
+        const toCache = mbResults
+          .filter((r) => r.genres.length > 0)
+          .map((r) => {
+            const track = uncachedTracks.find((t) => t.trackId === r.trackId)!;
+            return {
+              lookupKey: lookupKey(track.artistName, track.trackName),
+              trackName: normalizeTitle(track.trackName),
+              artistName: normalizeArtist(track.artistName),
+              genres: r.genres,
+              genreSource: "musicbrainz",
+            };
+          });
 
         if (toCache.length > 0) {
           convex
