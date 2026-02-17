@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
+import { lookupGenresViaLastFm } from "@/lib/lastfm";
 import { lookupGenres } from "@/lib/musicbrainz";
 import { normalizeTitle, normalizeArtist } from "@/lib/bpm/normalize";
 import { getConvexClient, api } from "@/lib/convex-client";
+
+const LASTFM_KEY = process.env.LASTFM_API_KEY || "";
 
 /** Strip non-ASCII so Convex field names don't crash on characters like ö */
 function toAscii(s: string): string {
@@ -37,7 +40,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check Convex cache for existing genres
+    // Check Convex cache
     const convex = getConvexClient();
     const results: Array<{ trackId: string; genres: string[] }> = [];
     let uncachedTracks = [...tracks];
@@ -64,25 +67,55 @@ export async function POST(request: Request) {
       }
     }
 
-    // Look up genres via MusicBrainz for uncached tracks
     if (uncachedTracks.length > 0) {
-      const mbResults = await lookupGenres(uncachedTracks);
-      for (const gr of mbResults) {
-        results.push(gr);
+      const taggedIds = new Set<string>();
+
+      // Layer 1: Last.fm (fast, concurrent, great coverage)
+      if (LASTFM_KEY) {
+        try {
+          const lfmResults = await lookupGenresViaLastFm(
+            uncachedTracks,
+            LASTFM_KEY
+          );
+          for (const gr of lfmResults) {
+            results.push(gr);
+            taggedIds.add(gr.trackId);
+          }
+        } catch (err) {
+          console.error("Last.fm genre lookup failed:", err);
+        }
       }
 
-      // Cache tracks that got genres to Convex
+      // Layer 2: MusicBrainz for Last.fm misses (slower, 1 req/sec)
+      const stillNeeded = uncachedTracks.filter(
+        (t) => !taggedIds.has(t.trackId)
+      );
+      if (stillNeeded.length > 0) {
+        try {
+          const mbResults = await lookupGenres(stillNeeded);
+          for (const gr of mbResults) {
+            if (gr.genres.length > 0) {
+              results.push(gr);
+              taggedIds.add(gr.trackId);
+            }
+          }
+        } catch (err) {
+          console.error("MusicBrainz genre lookup failed:", err);
+        }
+      }
+
+      // Cache tracks that got genres
       if (convex) {
-        const toCache = mbResults
-          .filter((r) => r.genres.length > 0)
-          .map((r) => {
-            const track = uncachedTracks.find((t) => t.trackId === r.trackId)!;
+        const toCache = uncachedTracks
+          .filter((t) => taggedIds.has(t.trackId))
+          .map((track) => {
+            const found = results.find((r) => r.trackId === track.trackId);
             return {
               lookupKey: lookupKey(track.artistName, track.trackName),
               trackName: normalizeTitle(track.trackName),
               artistName: normalizeArtist(track.artistName),
-              genres: r.genres,
-              genreSource: "musicbrainz",
+              genres: found?.genres ?? [],
+              genreSource: "lastfm",
             };
           });
 
