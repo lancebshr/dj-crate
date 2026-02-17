@@ -28,7 +28,7 @@ A web app for DJs to filter their Spotify library by BPM, find DJ-ready tracks, 
 - Displayed as an amber pill alongside purple genre pills on track cards.
 
 ### Caching (Convex)
-- **Convex** deployed at `https://dutiful-shrimp-548.convex.cloud` (preview deployment).
+- **Convex** deployed at `https://dapper-whale-616.convex.cloud` (preview deployment — these expire, redeploy with `npx convex deploy` if stale).
 - `trackCache` table stores BPM, musical key, Camelot key, genres, and source info keyed by normalized `artist:title`.
 - Both `/api/bpm` and `/api/genres` check cache before calling external APIs, then write results back.
 - `src/lib/convex-client.ts` — HTTP client helper using `makeFunctionReference` (no codegen needed).
